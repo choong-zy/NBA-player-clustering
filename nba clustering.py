@@ -16,11 +16,11 @@ from sklearn.mixture import GaussianMixture
 # model3 = joblib.load("/content/drive/MyDrive/ML/GMMmodel.pkl")
 # model4 = joblib.load("/content/drive/MyDrive/ML/MSmodel.pkl")
 
-df = pd.read_csv('/content/drive/MyDrive/ML/ML Asgm/dataset/final_df.csv')
-model1 = joblib.load("/content/drive/MyDrive/ML/ML Asgm/model/HCmodel.pkl")
-model2 = joblib.load("/content/drive/MyDrive/ML/ML Asgm/model/SCmodel.pkl")
-model3 = joblib.load("/content/drive/MyDrive/ML/ML Asgm/model/GMMmodel.pkl")
-model4 = joblib.load("/content/drive/MyDrive/ML/ML Asgm/model/MSmodel.pkl")
+df = pd.read_csv('final_df.csv')
+model1 = joblib.load("model/HCmodel.pkl")
+model2 = joblib.load("model/SCmodel.pkl")
+model3 = joblib.load("model/GMMmodel.pkl")
+model4 = joblib.load("model/MSmodel.pkl")
 st.set_page_config(layout='wide')
 features = ['Player', 'Pos', 'PER', 'BPM', 'WS/48', 'VORP', 'TS%', 'FG%', 'eFG%', '3P%', '2P%', 'FT%', 'PPG', 'APG', 'RPG', 'SPG', 'BPG', 'TPG', 'FPG']
 df = df[features]
