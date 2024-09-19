@@ -275,9 +275,17 @@ def dashboard():
         st.subheader("Correlation Matrix")
         numeric_cols = ['PER', 'BPM', 'WS/48', 'VORP', 'TS%', 'FG%', 'eFG%', '3P%', '2P%', 'FT%', 'PPG', 'APG', 'RPG', 'SPG', 'BPG', 'TPG', 'FPG']
         correlation_matrix = df[numeric_cols].corr()
-        fig, ax = plt.subplots(figsize=(20, 16))
+        # Increase figure size
+        fig, ax = plt.subplots(figsize=(20, 18))
+        # Create heatmap
         sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt='.2f', ax=ax)
-        plt.title('Correlation Matrix of Statistics')
+        # Rotate x-axis labels
+        plt.xticks(rotation=45, ha='right')
+        # Adjust bottom margin
+        plt.tight_layout()
+        # Add title
+        plt.title('Correlation Matrix of Statistics', fontsize=16, pad=20)
+        # Display in Streamlit
         st.pyplot(fig)
 
         # Boxplots
