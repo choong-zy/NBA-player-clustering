@@ -10,4 +10,5 @@ scipy==1.11.3
 Pillow==9.0.1
 wheel
 bokeh==2.4.3
+plotly
 scikit-fuzzy
