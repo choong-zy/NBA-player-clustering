@@ -656,7 +656,7 @@ def main():
             margin: 4px 2px;
             cursor: pointer;
             border-radius: 4px;
-            width: 100%;
+            width: 200px;
         }
         </style>
         """,
