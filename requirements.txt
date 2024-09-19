@@ -11,4 +11,4 @@ Pillow==9.0.1
 wheel
 bokeh==2.4.3
 plotly
-scikit-fuzzy
+git+https://github.com/omadson/fuzzy-c-means.git
