@@ -18,9 +18,11 @@ from bokeh.palettes import Category20_12  # Import Category20_12 instead of Cate
 from bokeh.transform import factor_cmap
 import plotly.express as px
 from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
-from sklearn.cluster import AgglomerativeClustering, SpectralClustering
+from sklearn.cluster import AgglomerativeClustering, Birch, MeanShift, SpectralClustering
+from fcmeans import FCM
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
+from math import pi
 
 # Load data and models
 df = pd.read_csv('final_df.csv')
@@ -100,7 +102,7 @@ def home():
     st.write("Welcome to the NBA Player Performance Clustering app. This tool allows you to explore clusters of NBA players based on their performance metrics.")
     
     # Set background image
-    background_image = 'background_image.jpeg'  # Replace with your image path
+    background_image = 'image2.png'  # Replace with your image path
     with open(background_image, "rb") as f:
         data = f.read()
         b64 = base64.b64encode(data).decode()
@@ -240,9 +242,11 @@ def dashboard():
     X_scaled = scaler.fit_transform(X)
 
     # ... rest of the dashboard function ...
+    # Create tabs
+    tab1, tab2, tab3, tab4 = st.tabs(["Data Exploration", "Data Analysis", "t-SNE Visualization", "Comparative Analysis"])
 
     # Data Exploration
-    if st.checkbox("Explore Data"):
+    with tab1:
         st.write("Data Preview:", df.head())
         column_to_filter = st.selectbox("Select a column to filter:", df.columns)
         
@@ -257,75 +261,154 @@ def dashboard():
         
         st.write("Filtered Data", filtered_data)
 
-    # PCA Visualization
-    if st.checkbox("PCA Visualization"):
-        pca = PCA(n_components=2)
-        pca_result = pca.fit_transform(X_scaled)
-        pca_df = pd.DataFrame(pca_result, columns=['PC1', 'PC2'])
-        pca_df['Player'] = df['Player']
-        pca_df['Position'] = df['Pos']
-        
-        fig = px.scatter(pca_df, x='PC1', y='PC2', color='Position', hover_data=['Player'],
-                        title="PCA 2D Visualization of NBA Players")
-        st.plotly_chart(fig)
-
     # Interactive Charts
-    if st.checkbox("Interactive Charts"):
-        chart_type = st.selectbox("Select Chart Type", ["2D Scatter", "3D Scatter"])
-        color_by = st.selectbox("Color by", options=['Pos'] + numeric_columns.tolist())
-        
-        if chart_type == "2D Scatter":
-            x_axis = st.selectbox("X-axis", options=numeric_columns)
-            y_axis = st.selectbox("Y-axis", options=numeric_columns)
-            fig = px.scatter(df, x=x_axis, y=y_axis, color=color_by, hover_data=['Player'],
-                            title=f"2D Scatter Plot: {x_axis} vs {y_axis}")
-        else:
-            x_axis = st.selectbox("X-axis", options=numeric_columns)
-            y_axis = st.selectbox("Y-axis", options=numeric_columns)
-            z_axis = st.selectbox("Z-axis", options=numeric_columns)
-            fig = px.scatter_3d(df, x=x_axis, y=y_axis, z=z_axis, color=color_by, hover_data=['Player'],
-                                title=f"3D Scatter Plot: {x_axis} vs {y_axis} vs {z_axis}")
-        
-        st.plotly_chart(fig)
+    with tab2:
+        st.header("Data Analysis")
 
-    # Model Performance Metrics and Clustering
-    if st.checkbox("Model Performance Metrics and Clustering"):
-        model_type = st.selectbox("Select model for metrics and clustering:", 
-                                ['GMM', 'Agglomerative Clustering', 'Spectral Clustering'])
-        n_clusters = st.slider("Number of Clusters", min_value=2, max_value=10, value=3)
-        
-        if model_type == 'GMM':
-            model = GaussianMixture(n_components=n_clusters)
-        elif model_type == 'Agglomerative Clustering':
-            model = AgglomerativeClustering(n_clusters=n_clusters)
+        # Histograms
+        st.subheader("Histograms of Numeric Features")
+        fig, ax = plt.subplots(figsize=(14, 18))
+        df[numeric_columns].hist(bins=20, figsize=(14, 18), ax=ax)
+        st.pyplot(fig)
+
+        # Correlation Matrix
+        st.subheader("Correlation Matrix")
+        numeric_cols = ['PER', 'BPM', 'WS/48', 'VORP', 'TS%', 'FG%', 'eFG%', '3P%', '2P%', 'FT%', 'PPG', 'APG', 'RPG', 'SPG', 'BPG', 'TPG', 'FPG']
+        correlation_matrix = df[numeric_cols].corr()
+        fig, ax = plt.subplots(figsize=(14, 12))
+        sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt='.2f', ax=ax)
+        plt.title('Correlation Matrix of Statistics')
+        st.pyplot(fig)
+
+        # Boxplots
+        st.subheader("Boxplots of Numeric Features")
+        plots_per_row = 5
+        fig, axes = plt.subplots(nrows=len(numeric_cols)//plots_per_row + 1, ncols=plots_per_row, figsize=(20, len(numeric_cols)//plots_per_row * 5))
+        axes = axes.flatten()
+        for i, column in enumerate(numeric_cols):
+            sns.boxplot(x=df[column], ax=axes[i])
+            axes[i].set_title(f'Box plot of {column}')
+        for j in range(i + 1, len(axes)):
+            axes[j].axis('off')
+        plt.tight_layout()
+        st.pyplot(fig)
+
+        # Position Distribution
+        st.subheader("Position Distribution")
+        pos_count = df['Pos'].value_counts()
+        fig, ax = plt.subplots(figsize=(3, 3))
+        pos_count.plot.pie(y='Pos', autopct='%1.1f%%', startangle=90, ax=ax)
+        st.pyplot(fig)
+
+        # Position-Based Analysis
+        st.subheader("Average Statistics by Position")
+        numeric_cols = ['3P%', '2P%', 'FT%', 'PPG', 'APG', 'RPG', 'SPG', 'BPG', 'TPG', 'FPG']
+        data_filtered = df[['Pos'] + numeric_cols]
+        data_means = data_filtered.groupby('Pos').mean().reset_index()
+        fig, ax = plt.subplots(figsize=(14, 8))
+        data_means.set_index('Pos').plot(kind='bar', ax=ax)
+        plt.title('Average Statistics by Position')
+        plt.xlabel('Position')
+        plt.ylabel('Average Value')
+        plt.legend(title='Statistic')
+        st.pyplot(fig)
+
+        # Offensive vs Defensive Stats
+        st.subheader("Offensive vs Defensive Box Plus/Minus")
+        bpm_sorted = df.sort_values(by='PER', ascending=False)
+        top_bpm = bpm_sorted[:194]
+        filtered_top_bpm = top_bpm.loc[:, ['Player', 'OBPM', 'DBPM', 'BPM']]
+        fig, ax = plt.subplots(figsize=(16, 16))
+        plt.scatter(filtered_top_bpm['OBPM'], filtered_top_bpm['DBPM'])
+        for i in range(30):
+            name = filtered_top_bpm.iloc[i]['Player']
+            plt.annotate(name, xy=(filtered_top_bpm.iloc[i]['OBPM'], filtered_top_bpm.iloc[i]['DBPM']),
+                         xycoords="data", textcoords='offset points', xytext=(3, 3), fontsize='small')
+        plt.xlabel("Offensive Box Plus/Minus", size="xx-large")
+        plt.ylabel("Defensive Box Plus/Minus", size="xx-large")
+        plt.title("Comparison of OBPM and DBPM for all players along with names for top 30 players in BPM", size="xx-large")
+        st.pyplot(fig)
+
+        def plot_performance_radar(player_name, data, categories):
+            def normalize(series):
+                """Normalize series to a 0-10 scale."""
+                min_val = series.min()
+                max_val = series.max()
+                return 10 * (series - min_val) / (max_val - min_val)
+
+            player_stats = data[data['Player'] == player_name]
+            if not player_stats.empty:
+                # Normalize all relevant statistics
+                normalized_data = data[categories].apply(normalize)
+
+                player_normalized_stats = normalized_data[data['Player'] == player_name].iloc[0]
+                # Prepare radar chart data
+                N = len(categories)
+                angles = [n / float(N) * 2 * pi for n in range(N)]
+                player_stats_values = np.append(player_normalized_stats.values, player_normalized_stats.values[0])
+                angles += angles[:1]
+
+                # Create figure and axis objects
+                fig, ax = plt.subplots(figsize=(2, 2), subplot_kw=dict(polar=True))
+                ax.plot(angles, player_stats_values, linewidth=1, linestyle='solid')
+                ax.fill(angles, player_stats_values, 'b', alpha=0.1)
+                ax.set_xticks(angles[:-1])
+                ax.set_xticklabels(categories, color='grey', size=8)
+                ax.set_title(f'Performance Radar for {player_name}', size=10)
+                
+                return fig
+            else:
+                print(f"{player_name} not found in the dataset.")
+                return None
+
+        # Radar Charts
+        st.subheader("Player Performance Radar Chart")
+        categories = ['PPG', 'APG', 'RPG', 'SPG', 'BPG']
+
+        # Sort players by VORP and get top 50
+        VORP_sorted = df.sort_values(by='VORP', ascending=False)
+        top_players = VORP_sorted['Player'].head(50).tolist()
+
+        # Create dropdown for player selection
+        selected_player = st.selectbox("Select a player:", top_players)
+
+        # Plot radar chart for selected player
+        fig = plot_performance_radar(selected_player, df, categories)
+        if fig:
+            st.pyplot(fig)
+            plt.close(fig)  # Close the figure to free up memory
         else:
-            model = SpectralClustering(n_clusters=n_clusters)
+            st.write("No data available for the selected player.")
+
+
+
+
+
+
+    # t-SNE Visualization
+    with tab3:
+        # Prepare the data
+        perf_features = ['PER', 'BPM', 'WS/48', 'VORP', 'TS%', 'FG%', 'eFG%', '3P%', '2P%', 'FT%', 'PPG', 'APG', 'RPG', 'SPG', 'BPG', 'TPG', 'FPG']
+        X = df[perf_features]
+            
+            # Scale the data
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
+
+        tsne = TSNE(n_components=2, learning_rate='auto', init='pca', random_state = 21)
+        tsne_result = tsne.fit_transform(X_scaled)
+        tsne_df = pd.DataFrame(tsne_result, columns=['TSNE1', 'TSNE2'])
+        tsne_df['Player'] = df['Player']
+        tsne_df['Position'] = df['Pos']
         
-        predicted_labels = model.fit_predict(X_scaled)
-        
-        silhouette_avg = silhouette_score(X_scaled, predicted_labels)
-        davies_bouldin = davies_bouldin_score(X_scaled, predicted_labels)
-        calinski_harabasz = calinski_harabasz_score(X_scaled, predicted_labels)
-        
-        col1, col2 = st.columns([1, 3])
-        with col1:
-            st.caption("Performance Metrics:")
-            st.metric("Silhouette", round(silhouette_avg, 2))
-            st.metric("Davies-Bouldin", round(davies_bouldin, 2))
-            st.metric("Calinski-Harabasz", round(calinski_harabasz, 2))
-        
-        with col2:
-            pca = PCA(n_components=2)
-            X_pca = pca.fit_transform(X_scaled)
-            fig = px.scatter(x=X_pca[:, 0], y=X_pca[:, 1], color=predicted_labels,
-                            hover_data=[df['Player'], df['Pos']],
-                            title=f"{model_type} Clustering")
-            st.plotly_chart(fig)
+        fig = px.scatter(tsne_df, x='TSNE1', y='TSNE2', color='Position', hover_data=['Player'],
+                        title="t-SNE 2D Visualization of NBA Players")
+        st.plotly_chart(fig)
 
     # Comparative Analysis
-    if st.checkbox("Comparative Analysis"):
+    with tab4:
         st.markdown("## Comparative Analysis of Models")
-        model_options = ['GMM', 'Agglomerative Clustering', 'Spectral Clustering']
+        model_options = ['GMM', 'Agglomerative Clustering', 'Spectral Clustering', 'Birch', 'Mean Shift', 'FCMeans', 'Ensemble']
         selected_models = st.multiselect("Select models to compare:", model_options)
         
         if selected_models:
@@ -334,28 +417,53 @@ def dashboard():
             fig = make_subplots(rows=len(selected_models), cols=1, subplot_titles=selected_models)
             metrics = []
             
+            # Prepare the data
+            perf_features = ['PER', 'BPM', 'WS/48', 'VORP', 'TS%', 'FG%', 'eFG%', '3P%', '2P%', 'FT%', 'PPG', 'APG', 'RPG', 'SPG', 'BPG', 'TPG', 'FPG']
+            X = df[perf_features]
+            
+            # Scale the data
+            scaler = StandardScaler()
+            X_scaled = scaler.fit_transform(X)
+            
+            # Perform t-SNE
+            tsne = TSNE(n_components=2, learning_rate='auto', init='pca', random_state=21)
+            X_tsne = tsne.fit_transform(X_scaled)
+            tsne_df = pd.DataFrame({'component_1': X_tsne[:,0], 'component_2': X_tsne[:,1]})
+            
             for i, model_type in enumerate(selected_models, start=1):
                 if model_type == 'GMM':
-                    model = GaussianMixture(n_components=n_clusters)
+                    model = GaussianMixture(n_components=n_clusters, covariance_type='full', max_iter=1000,  tol=0.001)
                 elif model_type == 'Agglomerative Clustering':
-                    model = AgglomerativeClustering(n_clusters=n_clusters)
-                else:
-                    model = SpectralClustering(n_clusters=n_clusters)
-                
-                predicted_labels = model.fit_predict(X_scaled)
-                pca = PCA(n_components=2)
-                X_pca = pca.fit_transform(X_scaled)
+                    model = AgglomerativeClustering(n_clusters=n_clusters, affinity='chebyshev', linkage='average')
+                elif model_type == 'Spectral Clustering':
+                    model = SpectralClustering(n_clusters=n_clusters, affinity='nearest_neighbors', eigen_solver='arpack', n_neighbors=20, assign_labels='discretize')
+                elif model_type == 'Birch':
+                    model = Birch(n_clusters=n_clusters, threshold=1.0, branching_factor=150)
+                elif model_type == 'Mean Shift':
+                    model = MeanShift(bandwidth=12, cluster_all=True, max_iter=100, bin_seeding=True)
+                elif model_type == 'FCMeans':
+                    model = FCM(n_clusters=n_clusters, m=1.5, error=0.001, max_iter=100)
+                else:  # Ensemble
+                    HCmodel = AgglomerativeClustering(n_clusters=3, affinity='chebyshev', linkage='average')
+                    GMMmodel = GaussianMixture(n_components=3, covariance_type='full', max_iter=1000, tol=0.001)
+                    MSmodel = MeanShift(bandwidth=2, cluster_all=True, max_iter=100, bin_seeding=True)
+                    SCmodel = SpectralClustering(n_clusters=3, affinity='nearest_neighbors', eigen_solver='arpack', n_neighbors=20, assign_labels='discretize')
+                    base_estimators = [HCmodel, SCmodel, GMMmodel, MSmodel]
+                    aggregator_clt = GaussianMixture(n_components=3, covariance_type='full', max_iter=1000, tol=0.001)
+                    model = EnsembleCustering(base_estimators=base_estimators, aggregator=aggregator_clt)
+
+                predicted_labels = model.fit_predict(X_tsne)
                 
                 fig.add_trace(
-                    go.Scatter(x=X_pca[:, 0], y=X_pca[:, 1], mode='markers',
+                    go.Scatter(x=X_tsne[:, 0], y=X_tsne[:, 1], mode='markers',
                             marker=dict(color=predicted_labels, colorscale='Viridis', showscale=False),
                             text=df['Player'], hoverinfo='text'),
                     row=i, col=1
                 )
                 
-                silhouette_avg = silhouette_score(X_scaled, predicted_labels)
-                davies_bouldin = davies_bouldin_score(X_scaled, predicted_labels)
-                calinski_harabasz = calinski_harabasz_score(X_scaled, predicted_labels)
+                silhouette_avg = silhouette_score(X_tsne, predicted_labels)
+                davies_bouldin = davies_bouldin_score(X_tsne, predicted_labels)
+                calinski_harabasz = calinski_harabasz_score(X_tsne, predicted_labels)
                 metrics.append([model_type, silhouette_avg, davies_bouldin, calinski_harabasz])
             
             fig.update_layout(height=300*len(selected_models), title_text="Comparative Cluster Analysis")
@@ -369,7 +477,7 @@ def dashboard():
 
 # Predict page
 def predict():
-   #st.markdown("<h1 style='text-align: center; color: red;'>NBA Player Position Clustering</h1>", unsafe_allow_html=True)
+    #st.markdown("<h1 style='text-align: center; color: red;'>NBA Player Position Clustering</h1>", unsafe_allow_html=True)
     #st.title("NBA :blue[Player Position Clustering]")
     st.title("NBA Player Position Clustering")
 
