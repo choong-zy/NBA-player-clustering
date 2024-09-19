@@ -275,7 +275,7 @@ def dashboard():
         st.subheader("Correlation Matrix")
         numeric_cols = ['PER', 'BPM', 'WS/48', 'VORP', 'TS%', 'FG%', 'eFG%', '3P%', '2P%', 'FT%', 'PPG', 'APG', 'RPG', 'SPG', 'BPG', 'TPG', 'FPG']
         correlation_matrix = df[numeric_cols].corr()
-        fig, ax = plt.subplots(figsize=(14, 12))
+        fig, ax = plt.subplots(figsize=(20, 16))
         sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt='.2f', ax=ax)
         plt.title('Correlation Matrix of Statistics')
         st.pyplot(fig)
@@ -379,11 +379,6 @@ def dashboard():
             plt.close(fig)  # Close the figure to free up memory
         else:
             st.write("No data available for the selected player.")
-
-
-
-
-
 
     # t-SNE Visualization
     with tab3:
