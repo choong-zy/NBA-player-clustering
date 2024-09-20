@@ -483,30 +483,30 @@ def predict():
     with col1:
         player = st.text_input("Player Name")
         pos = st.radio("Position", ["Center (C)", "Power Forward (PF)", "Small Forward (SF)", "Point Guard (PG)", "Shooting Guard (SG)"])
-        per = st.number_input("Player Efficiency Rating (PER)")
-        bpm = st.number_input("Box Plus/Minus (BPM)")
-        ws = st.number_input("Win Shares Per 48 Minutes (WS/48)")
-        vorp = st.number_input("Value over Replacement Player (VORP)")
+        per = st.number_input("Player Efficiency Rating (PER)", min_value=0.0, max_value=40.0, step=0.1)
+        bpm = st.number_input("Box Plus/Minus (BPM)", min_value=-10.0, max_value=15.0, step=0.1)
+        ws = st.number_input("Win Shares Per 48 Minutes (WS/48)", min_value=0.0, max_value=0.4, step=0.01)
+        vorp = st.number_input("Value over Replacement Player (VORP)", min_value=-2.0, max_value=10.0, step=0.1)
         st.markdown('#')
         st.markdown('#')
 
     with col2:
-        ts = st.number_input("True Shooting Percentage (TS%)")
-        fg = st.number_input("Field Goal Percentage (FG%)")
-        efg = st.number_input("Effective Field Goal Percentage (eFG%)")
-        threePoint = st.number_input("3-Point Field Goal Percentage (3P%)")
-        twoPoint = st.number_input("2-Point Field Goal Percentage (2P%)")
-        ft = st.number_input("Free Throw Percentage (FT%)")
+        ts = st.number_input("True Shooting Percentage (TS%)", min_value=0.0, max_value=100.0, step=0.1)
+        fg = st.number_input("Field Goal Percentage (FG%)", min_value=0.0, max_value=100.0, step=0.1)
+        efg = st.number_input("Effective Field Goal Percentage (eFG%)", min_value=0.0, max_value=100.0, step=0.1)
+        threePoint = st.number_input("3-Point Field Goal Percentage (3P%)", min_value=0.0, max_value=100.0, step=0.1)
+        twoPoint = st.number_input("2-Point Field Goal Percentage (2P%)", min_value=0.0, max_value=100.0, step=0.1)
+        ft = st.number_input("Free Throw Percentage (FT%)", min_value=0.0, max_value=100.0, step=0.1)
         st.markdown('#')
 
     with col3:
-        ppg = st.number_input("Points Per Game (PPG)")
-        apg = st.number_input("Assist Per Game (APG)")
-        rpg = st.number_input("Rebound Per Game (RPG)")
-        spg = st.number_input("Steal Per Game (SPG)")
-        bpg = st.number_input("Block Per Game (BPG)")
-        tpg = st.number_input("Turnover Per Game (TPG)")
-        fpg = st.number_input("Foul Per Game (FPG)")
+        ppg = st.number_input("Points Per Game (PPG)", min_value=0.0, max_value=40.0, step=0.1)
+        apg = st.number_input("Assist Per Game (APG)", min_value=0.0, max_value=15.0, step=0.1)
+        rpg = st.number_input("Rebound Per Game (RPG)", min_value=0.0, max_value=20.0, step=0.1)
+        spg = st.number_input("Steal Per Game (SPG)", min_value=0.0, max_value=5.0, step=0.1)
+        bpg = st.number_input("Block Per Game (BPG)", min_value=0.0, max_value=5.0, step=0.1)
+        tpg = st.number_input("Turnover Per Game (TPG)", min_value=0.0, max_value=10.0, step=0.1)
+        fpg = st.number_input("Foul Per Game (FPG)", min_value=0.0, max_value=6.0, step=0.1)
     
     # Create a dictionary with the input data
     input_data = {
