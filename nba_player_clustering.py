@@ -102,7 +102,7 @@ def home():
     st.write("Welcome to the NBA Player Performance Clustering app. This tool allows you to explore clusters of NBA players based on their performance metrics.")
     
     # Set background image
-    background_image = 'image2.png'  # Replace with your image path
+    background_image = 'background_image.jpeg'
     with open(background_image, "rb") as f:
         data = f.read()
         b64 = base64.b64encode(data).decode()
